@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"/>
+  <title>HEX – web</title>
+  <link rel="stylesheet"
+        href="{{ url_for('hex_web.static', filename='board.css') }}">
+  <link rel="icon"
+        href="{{ url_for('hex_web.static', filename='favicon.ico') }}">
+</head>
+<body>
+  <div id="ui-bar">
+    <span id="game-title">HEX</span>
+
+    <select id="mode">
+      <option value="ai"     {% if mode == 'ai'    %}selected{% endif %}>vs AI</option>
+      <option value="local"  {% if mode == 'local' %}selected{% endif %}>2 os. (lokalnie)</option>
+      <option value="online" {% if mode == 'online'%}selected{% endif %}>online</option>
+    </select>
+
+    <span id="legend"></span>
+    <button id="play-again" style="display:none;">Zagraj ponownie</button>
+
+    {% if mode == 'online' and not gid %}
+    <div id="online-ui" style="margin-left:20px;">
+      <button id="gen-code">Wygeneruj kod</button>
+      <input type="text" id="code-input" placeholder="kod" size="6">
+      <button id="join-btn">Dołącz</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="board"></div>
+
+  {# Ładujemy i uruchamiamy board.js tylko gdy mamy gid #}
+  {% if gid %}
+  <script type="module">
+    import { initBoard }
+      from "{{ url_for('hex_web.static', filename='board.js') }}";
+
+    const size = {{ size }};
+    const gid  = "{{ gid }}";
+    const mode = "{{ mode }}";
+    const role = "{{ role or '' }}";
+
+    initBoard(size, gid, mode, role);
+  </script>
+  {% endif %}
+
+  <script>
+    document.getElementById("mode")
+      .addEventListener("change", e => {
+        window.location = "/?mode=" + e.target.value;
+      });
+
+    {% if mode == 'online' and not gid %}
+    document.getElementById("gen-code").addEventListener("click", () => {
+      fetch("/api/game", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ai:false})
+      })
+      .then(r => r.json())
+      .then(info => {
+        window.location = "/?mode=online&gid=" + info.id + "&role=1";
+      });
+    });
+    document.getElementById("join-btn").addEventListener("click", () => {
+      const code = document.getElementById("code-input").value.trim();
+      if (code) {
+        window.location = "/?mode=online&gid=" + code + "&role=2";
+      }
+    });
+    {% endif %}
+  </script>
+</body>
+</html>

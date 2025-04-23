@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hexgame"
+version = "0.1.0"
+description = "Gra HEX – konsola i GUI"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "PyQt6>=6.7",
+]
+
+[project.scripts]
+hex-cli = "ui.cli:main"
+hex-gui = "ui.qt:main"
