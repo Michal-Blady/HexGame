@@ -14,9 +14,7 @@ class Cell(enum.IntEnum):
 
 
 class Board:
-    """Hex‑board + ASCII‑wizualizacja."""
 
-    # sąsiedztwo heksagonalne (w układzie axial)
     DIRS: Tuple[Tuple[int, int], ...] = (
         (-1, 0),
         (-1, 1),

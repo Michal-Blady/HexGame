@@ -3,6 +3,6 @@ pytest>=8.0 ; extra == "dev"
 black>=24.3 ; extra == "dev"
 isort>=5.13 ; extra == "dev"
 pyqt6>=6.7 ; extra == "gui"
-
+tcms-api>=10.4
 PyQt6~=6.9.0
 Flask~=3.1.0

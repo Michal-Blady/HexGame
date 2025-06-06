@@ -1,3 +1,7 @@
 ***1) dodatkowy rodzaj ruchu random i wybór w danym momencie ruchu z randoma
 2) wyświetlanie komunikatu o zwycięstwie - kto wygrał + przycisk zagraj ponownie
 3) odświeżanie przed kolejnym ruchem w online
+4) opcja przechowywania danych
+5) dorobić readme dla okienkowego
+6) osobny projekt na gitlabie dla flask
+7) pauzowanie rozgrywki
