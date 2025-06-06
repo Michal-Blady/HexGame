@@ -2,82 +2,70 @@ pipeline {
     agent any
 
     environment {
-        KIWI_URL      = 'https://host.docker.internal:8443'
-        KIWI_PLAN_ID  = '1'
-        KIWI_BUILD_ID = '2'
-        WORKDIR       = '/workspace'  // to jest C:/Users/Michał/Desktop/DPP/lab07/HEX
+        // Zakładamy, że w Jenkinsie w sekcji „Credentials” mamy dwa wpisy:
+        // ID: kiwi-credentials, typu „Username with password”
+        // w ten sposób możemy w prosty sposób pobrać zarówno TCMS_USER, jak i TCMS_PASSWORD
+        TCMS_URL      = "https://localhost:8443"
+        TCMS_PLAN     = "1"
+        TCMS_BUILD    = "2"
+        TCMS_CRED     = credentials('KIWI_TESTER')
     }
 
     stages {
-        stage('Install Python & Git (jednorazowo)') {
+        stage('Checkout') {
+            steps {
+                // Pobierz kod z repozytorium (np. Git)
+                checkout scm
+            }
+        }
+
+        stage('Install dependencies') {
             steps {
                 sh '''
-                   # jeśli brakuje python3 lub git – doinstaluj
-                   command -v python3 >/dev/null 2>&1 || NEED_PKGS=1
-                   command -v git      >/dev/null 2>&1 || NEED_PKGS=1
-
-                   if [ "$NEED_PKGS" = "1" ]; then
-                       echo '>>> Instaluję python3, venv, pip i git w kontenerze Jenkinsa'
-                       apt-get update -qq
-                       DEBIAN_FRONTEND=noninteractive \
-                       apt-get install -y python3 python3-venv python3-pip git
-                   fi
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
                 '''
             }
         }
 
-        stage('Run pytest → Kiwi') {
+        stage('Run tests and send to Kiwi') {
             steps {
-                dir("${WORKDIR}") {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'KIWI_TESTER',
-                        usernameVariable: 'KIWI_USER',
-                        passwordVariable: 'KIWI_PASS')]) {
+                sh '''
+                    # Aktywuj wirtualne środowisko
+                    . venv/bin/activate
 
-                        sh '''
-                          # Utwórz i aktywuj venv
-                          python3 -m venv venv
-                          . venv/bin/activate
+                    # Pobranie TCMS_USER/TCMS_PASSWORD:
+                    # Jenkins rozdziela po „colon” wartości z credentials->username:password
+                    IFS=":" read -r TCMS_USER TCMS_PASSWORD <<< "${TCMS_CRED}"
 
-                          # Zaktualizuj pip
-                          pip install -q --upgrade pip
-
-                          # Zainstaluj klienta API Kiwi TCMS
-                          pip install -q tcms-api
-
-                          # Ręcznie sklonuj plugin pytest-tcms z GitHuba
-                          rm -rf pytest-tcms
-                          git clone https://github.com/kiwitcms/pytest-tcms.git pytest-tcms
-
-                          # Zainstaluj lokalnie plugin do aktywnego venv
-                          pip install -q pytest-tcms
-
-                          # Teraz zainstaluj resztę zależności projektu
-                          pip install -q -r requirements.txt
-
-                          # Utwórz folder na raporty
-                          mkdir -p reports
-
-                          # Uruchom pytest z argumentami dla Kiwi TCMS
-                          pytest web_tests \
-                             --junitxml=reports/junit.xml \
-                             --tcms-url=$KIWI_URL \
-                             --tcms-plan=$KIWI_PLAN_ID \
-                             --tcms-build=$KIWI_BUILD_ID \
-                             --tcms-user=$KIWI_USER \
-                             --tcms-password=$KIWI_PASS \
-                             --tcms-insecure
-                        '''
-                    }
+                    # Uruchomienie pytest z wtyczką Kiwi. Wyniki wysłane do Kiwi
+                    pytest web_tests \
+                        --tcms-url=${TCMS_URL} \
+                        --tcms-plan=${TCMS_PLAN} \
+                        --tcms-build=${TCMS_BUILD} \
+                        --tcms-user=${TCMS_USER} \
+                        --tcms-password=${TCMS_PASSWORD} \
+                        --tcms-insecure
+                '''
+            }
+            post {
+                always {
+                    // Możemy zebrać artefakty, np. logi czy raporty JUnit,
+                    // chociaż główną informacją jest to, że wyniki poszły do Kiwi
+                    junit 'web_tests/**/*.xml' // jeśli generujemy raport JUnit
                 }
             }
         }
     }
 
     post {
-        always {
-            // Wczytaj raport JUnit (albo zignoruj, jeśli go nie ma)
-            junit allowEmptyResults: true, testResults: 'reports/junit.xml'
+        success {
+            echo 'Testy zostały uruchomione i wyniki przesłane do Kiwi TCMS.'
+        }
+        failure {
+            echo 'Przynajmniej jeden test nie przeszedł. Wyniki również zostały przesłane do Kiwi TCMS (status Fail).'
         }
     }
 }
