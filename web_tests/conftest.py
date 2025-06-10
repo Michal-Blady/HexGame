@@ -2,13 +2,13 @@
 import pytest
 
 def pytest_addoption(parser):
-    """Dodawanie opcji CLI do pytest dla integracji z Kiwi."""
+    """Dodajemy opcje CLI do pytest dla integracji z Kiwi."""
     group = parser.getgroup("tcms")
     group.addoption(
         "--tcms-url",
         action="store",
         dest="tcms_url",
-        help="URL do Kiwi TCMS (np. https://host:8443)",
+        help="URL do Kiwi TCMS (np. http://kiwi_web:8066)",
     )
     group.addoption(
         "--tcms-plan",
@@ -20,7 +20,7 @@ def pytest_addoption(parser):
         "--tcms-build",
         action="store",
         dest="tcms_build",
-        help="ID buildu w Kiwi TCMS",
+        help="Numer bieżącego buildu (lub nazwa run) w Kiwi TCMS",
     )
     group.addoption(
         "--tcms-user",
@@ -38,7 +38,7 @@ def pytest_addoption(parser):
         "--tcms-insecure",
         action="store_true",
         dest="tcms_insecure",
-        help="Wyłącz weryfikację SSL/TLS (do localhost)",
+        help="Wyłącz weryfikację SSL/TLS (jeśli używasz HTTPS z samopodpisanym cert.)",
     )
 
 @pytest.fixture
@@ -53,7 +53,6 @@ def tcms_exec(request):
     password = request.config.getoption("tcms_password")
     insecure = request.config.getoption("tcms_insecure")
 
-    # Tworzymy instancję TCMS, wyłączamy weryfikację SSL, jeśli potrzeba
     if insecure:
         import os
         os.environ["PYTHONHTTPSVERIFY"] = "0"
